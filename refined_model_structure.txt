@@ -1,0 +1,107 @@
+RefinedModel(
+  (mention_detection): MentionDetection(
+    (dropout): Dropout(p=0.1, inplace=False)
+    (linear): Linear(in_features=768, out_features=17, bias=True)
+  )
+  (mention_embedding_dropout): Dropout(p=0.1, inplace=False)
+  (entity_typing): EntityTyping(
+    (dropout): Dropout(p=0.1, inplace=False)
+    (linear): Linear(in_features=768, out_features=1369, bias=True)
+  )
+  (entity_disambiguation): EntityDisambiguation(
+    (dropout): Dropout(p=0.05, inplace=False)
+    (classifier): Linear(in_features=1372, out_features=1, bias=True)
+  )
+  (ed_2): EDLayer(
+    (dropout): Dropout(p=0.1, inplace=False)
+    (hidden_layer): Linear(in_features=768, out_features=1000, bias=True)
+    (mention_projection): Linear(in_features=768, out_features=300, bias=True)
+    (description_encoder): DescriptionEncoder(
+      (dropout): Dropout(p=0.1, inplace=False)
+      (hidden_layer): Linear(in_features=768, out_features=1000, bias=True)
+      (projection): Linear(in_features=768, out_features=300, bias=True)
+      (transformer): RobertaModel(
+        (embeddings): RobertaEmbeddings(
+          (word_embeddings): Embedding(50265, 768, padding_idx=1)
+          (position_embeddings): Embedding(514, 768, padding_idx=1)
+          (token_type_embeddings): Embedding(1, 768)
+          (LayerNorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+          (dropout): Dropout(p=0.1, inplace=False)
+        )
+        (encoder): RobertaEncoder(
+          (layer): ModuleList(
+            (0-1): 2 x RobertaLayer(
+              (attention): RobertaAttention(
+                (self): RobertaSelfAttention(
+                  (query): Linear(in_features=768, out_features=768, bias=True)
+                  (key): Linear(in_features=768, out_features=768, bias=True)
+                  (value): Linear(in_features=768, out_features=768, bias=True)
+                  (dropout): Dropout(p=0.1, inplace=False)
+                )
+                (output): RobertaSelfOutput(
+                  (dense): Linear(in_features=768, out_features=768, bias=True)
+                  (LayerNorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+                  (dropout): Dropout(p=0.1, inplace=False)
+                )
+              )
+              (intermediate): RobertaIntermediate(
+                (dense): Linear(in_features=768, out_features=3072, bias=True)
+                (intermediate_act_fn): GELUActivation()
+              )
+              (output): RobertaOutput(
+                (dense): Linear(in_features=3072, out_features=768, bias=True)
+                (LayerNorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+                (dropout): Dropout(p=0.1, inplace=False)
+              )
+            )
+          )
+        )
+        (pooler): RobertaPooler(
+          (dense): Linear(in_features=768, out_features=768, bias=True)
+          (activation): Tanh()
+        )
+      )
+    )
+  )
+  (transformer): RobertaModel(
+    (embeddings): RobertaEmbeddings(
+      (word_embeddings): Embedding(50265, 768, padding_idx=1)
+      (position_embeddings): Embedding(514, 768, padding_idx=1)
+      (token_type_embeddings): Embedding(1, 768)
+      (LayerNorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+      (dropout): Dropout(p=0.1, inplace=False)
+    )
+    (encoder): RobertaEncoder(
+      (layer): ModuleList(
+        (0-11): 12 x RobertaLayer(
+          (attention): RobertaAttention(
+            (self): RobertaSelfAttention(
+              (query): Linear(in_features=768, out_features=768, bias=True)
+              (key): Linear(in_features=768, out_features=768, bias=True)
+              (value): Linear(in_features=768, out_features=768, bias=True)
+              (dropout): Dropout(p=0.1, inplace=False)
+            )
+            (output): RobertaSelfOutput(
+              (dense): Linear(in_features=768, out_features=768, bias=True)
+              (LayerNorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+              (dropout): Dropout(p=0.1, inplace=False)
+            )
+          )
+          (intermediate): RobertaIntermediate(
+            (dense): Linear(in_features=768, out_features=3072, bias=True)
+            (intermediate_act_fn): GELUActivation()
+          )
+          (output): RobertaOutput(
+            (dense): Linear(in_features=3072, out_features=768, bias=True)
+            (LayerNorm): LayerNorm((768,), eps=1e-05, elementwise_affine=True)
+            (dropout): Dropout(p=0.1, inplace=False)
+          )
+        )
+      )
+    )
+    (pooler): RobertaPooler(
+      (dense): Linear(in_features=768, out_features=768, bias=True)
+      (activation): Tanh()
+    )
+  )
+)
