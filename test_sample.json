@@ -1,0 +1,190 @@
+{
+    "docid": "30112107",
+    "title": "Coburg Peak",
+    "uri": "Q5139027",
+    "text": "Coburg Peak (, ) is the rocky peak rising to 783 m in Erul Heights on Trinity Peninsula in Graham Land, Antarctica. It is surmounting Cugnot Ice Piedmont to the northeast.\n\nThe peak is named after the Bulgarian royal house of Coburg (Saxe-Coburg-Gotha), 1887–1946.",
+    "entities": [
+        {
+            "uri": "Q5395951",
+            "boundaries": [
+                54,
+                66
+            ],
+            "surfaceform": "Erul Heights",
+            "annotator": "Me"
+        },
+        {
+            "uri": "Q2038835",
+            "boundaries": [
+                70,
+                87
+            ],
+            "surfaceform": "Trinity Peninsula",
+            "annotator": "Me"
+        },
+        {
+            "uri": "Q618370",
+            "boundaries": [
+                91,
+                102
+            ],
+            "surfaceform": "Graham Land",
+            "annotator": "Me"
+        },
+        {
+            "uri": "Q51",
+            "boundaries": [
+                104,
+                114
+            ],
+            "surfaceform": "Antarctica",
+            "annotator": "Me"
+        },
+        {
+            "uri": "Q5192667",
+            "boundaries": [
+                134,
+                153
+            ],
+            "surfaceform": "Cugnot Ice Piedmont",
+            "annotator": "Me"
+        },
+        {
+            "uri": "Q164950",
+            "boundaries": [
+                211,
+                222
+            ],
+            "surfaceform": "royal house",
+            "annotator": "Me"
+        },
+        {
+            "uri": "Q4996295",
+            "boundaries": [
+                234,
+                251
+            ],
+            "surfaceform": "Saxe-Coburg-Gotha",
+            "annotator": "Me"
+        },
+        {
+            "uri": "Q5139027",
+            "boundaries": [
+                0,
+                11
+            ],
+            "surfaceform": "Coburg Peak",
+            "annotator": "Me"
+        },
+        {
+            "uri": "1887-01-01T00:00:00Z^^http://www.w3.org/2001/XMLSchema#dateTime",
+            "boundaries": [
+                254,
+                258
+            ],
+            "surfaceform": "1887",
+            "annotator": "Date_Linker"
+        },
+        {
+            "uri": "+1946^^http://www.w3.org/2001/XMLSchema#decimal",
+            "boundaries": [
+                259,
+                263
+            ],
+            "surfaceform": "1946",
+            "annotator": "Value_Linker"
+        }
+    ],
+    "triples": [
+        {
+            "subject": {
+                "uri": "Q2038835",
+                "boundaries": [
+                    70,
+                    87
+                ],
+                "surfaceform": "Trinity Peninsula",
+                "annotator": "Me"
+            },
+            "predicate": {
+                "uri": "P361",
+                "boundaries": null,
+                "surfaceform": "part of",
+                "annotator": "Simple-Aligner"
+            },
+            "object": {
+                "uri": "Q618370",
+                "boundaries": [
+                    91,
+                    102
+                ],
+                "surfaceform": "Graham Land",
+                "annotator": "Me"
+            },
+            "sentence_id": 0,
+            "dependency_path": null,
+            "confidence": null,
+            "annotator": "Simple-Aligner"
+        },
+        {
+            "subject": {
+                "uri": "Q2038835",
+                "boundaries": [
+                    70,
+                    87
+                ],
+                "surfaceform": "Trinity Peninsula",
+                "annotator": "Me"
+            },
+            "predicate": {
+                "uri": "P30",
+                "boundaries": null,
+                "surfaceform": "continent",
+                "annotator": "Simple-Aligner"
+            },
+            "object": {
+                "uri": "Q51",
+                "boundaries": [
+                    104,
+                    114
+                ],
+                "surfaceform": "Antarctica",
+                "annotator": "Me"
+            },
+            "sentence_id": 0,
+            "dependency_path": null,
+            "confidence": null,
+            "annotator": "Simple-Aligner"
+        },
+        {
+            "subject": {
+                "uri": "Q618370",
+                "boundaries": [
+                    91,
+                    102
+                ],
+                "surfaceform": "Graham Land",
+                "annotator": "Me"
+            },
+            "predicate": {
+                "uri": "P30",
+                "boundaries": null,
+                "surfaceform": "continent",
+                "annotator": "Simple-Aligner"
+            },
+            "object": {
+                "uri": "Q51",
+                "boundaries": [
+                    104,
+                    114
+                ],
+                "surfaceform": "Antarctica",
+                "annotator": "Me"
+            },
+            "sentence_id": 0,
+            "dependency_path": null,
+            "confidence": null,
+            "annotator": "Simple-Aligner"
+        }
+    ]
+}
