@@ -2,10 +2,12 @@
 from neo4j import GraphDatabase
 from kgbuilder import KGBuilder
 from refined.data_types.base_types import Span
-
+import spacy
+from transformers import DistilBertTokenizer, DistilBertModel
 
 URI = "neo4j://localhost"
 AUTH = ("neo4j","prueba_1234")
+
 
 
 def get_entity_from_dicc(dictionary:dict,term:str):
@@ -82,34 +84,103 @@ def method_3(text):
     return relationships_list,list(entities),spans_list
 
 
-def extract_chunks(phrase,tokenizer):
-
-    tokens = tokenizer.tokenize(phrase)
-    n_tokens = len(tokens)
-    chunk_size = n_tokens
-    n_chunks = 1
-    while chunk_size > 1024:
-        chunk_size = chunk_size/2
-        n_chunks = n_chunks*2
-
+def extract_chunks(nlp, phrase,tokenizer,model):
+    doc = nlp(phrase)
     chunks = []
-    for i in range(0,n_chunks):
-        chunks.append(tokens[i*chunk_size:i+1*chunk_size])
+    index = 0
+    for sent in doc.sents:
+        chunk = {
+            'index': index,
+            'text': sent.text,
+            'start': sent.start_char,
+            'end': sent.end_char,
+            'embedding': generate_contextual_embedding_from_phrase(sent.text,model=model,tokenizer=tokenizer)
+        }
+        chunks.append(chunk)
+        index += 1
 
     return chunks
 
 
+def generate_contextual_embedding_from_phrase(phrase,model,tokenizer):
+    encoded_input = tokenizer(phrase,return_tensors='pt')
+    outputs= model(**encoded_input)
+    embedding = str(outputs.last_hidden_state.mean(dim=1).tolist()[0])
+    return embedding
+
+
+
+def link_chunks_with_text_in_database(driver,chunks_db_id,text_id):
+    stmt = """
+        MATCH (t:Text),(c:Chunk)
+        WHERE id(t) = $text_id and id(c) = $chunk_id
+        CREATE (c)-[:PART_OF]->(t)
+    """
+
+    for chunk_id in chunks_db_id:
+        params = {'text_id':text_id,'chunk_id':chunk_id}
+        with driver.session() as session:
+           session.run(stmt,params) 
+
+def create_chunks_in_database(driver,chunks,text_id):
+    stmt = "CREATE (c:Chunk {index:$index, text: $text,index_start:$start,index_end:$end,embedding:$embedding}) RETURN id(c) as nodeId"
+    chunks_db_id = []
+    for chunk in chunks:
+        params = {'text':chunk['text'],'start':chunk['start'],'end':chunk['end'],'embedding':chunk['embedding'],'index':chunk['index']}
+
+        with driver.session() as session:
+           result = session.run(stmt,params) 
+           node_id = result.single()['nodeId']
+           chunks_db_id.append(node_id)
+
+    link_chunks_with_text_in_database(driver,chunks_db_id,text_id)
+
+    return chunks_db_id
+
+
+def create_entities_in_database(driver,entities):
+
+    stmt = "MERGE (c:Entity {wikidata_id:$id})"
+    for ent in entities:
+        params = {'id':ent}
+
+        with driver.session() as session:
+           result = session.run(stmt,params)
+    
+           
+
+
+
+def create_text_in_database(driver,phrase):
+    stmt = "CREATE (t:Text {text: $text, createdAt: datetime()}) RETURN id(t) as nodeId"
+    params = {"text": phrase}
+    
+    with driver.session() as session:
+        result = session.run(stmt, params)
+        node_id = result.single()['nodeId']
+        return node_id
+
+
+
+#def store_in_database_tx(pharse,chunk,relationships,entities,spans):
+
 
 if __name__ == '__main__':
     builder = KGBuilder()
-    while True:
-        phrase = input("Enter a phrase to extract information: ")
-        #chunks = extract_chunks(phrase,builder.triplet_extractor.tokenizer)
-        relationships, entities,spans = method_3(phrase)
-        print(relationships)
+    nlp = spacy.load("en_core_web_sm")
 
-        
-        
-    with GraphDatabase.driver(URI,auth=AUTH) as driver:
-        driver.verify_connectivity()
     
+    tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
+    model = DistilBertModel.from_pretrained("distilbert-base-uncased")
+
+
+    while True:
+        phrase = input("Enter a phrase  with no newline to extract information: ")
+        chunks = extract_chunks(nlp,phrase,tokenizer,model)
+        relationships, entities,spans = method_3(phrase)
+
+        with GraphDatabase.driver(URI,auth=AUTH) as driver:
+            text_id = create_text_in_database(driver,phrase)
+            chunks_id = create_chunks_in_database(driver,chunks,text_id)
+            create_entities_in_database(driver,entities)
+
