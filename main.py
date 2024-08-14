@@ -94,7 +94,8 @@ def extract_chunks(nlp, phrase,tokenizer,model):
             'text': sent.text,
             'start': sent.start_char,
             'end': sent.end_char,
-            'embedding': generate_contextual_embedding_from_phrase(sent.text,model=model,tokenizer=tokenizer)
+            'embedding': generate_contextual_embedding_from_phrase(sent.text,model=model,tokenizer=tokenizer),
+            'spans':[]
         }
         chunks.append(chunk)
         index += 1
@@ -108,6 +109,27 @@ def generate_contextual_embedding_from_phrase(phrase,model,tokenizer):
     embedding = str(outputs.last_hidden_state.mean(dim=1).tolist()[0])
     return embedding
 
+def link_entity_mentions_with_chunks(driver,chunks):
+
+    stmt = """
+
+    MATCH (c:Chunk)
+    WHERE id(c) = $chunk_id
+    MATCH (e:Entity{wikidata_id:$wikidata_id})
+    CREATE (e)<-[:MENTION{as:$mention,index_start:$start,index_end:$end,confidence:$conf}]-(c)
+    
+    """
+
+    for chunk in chunks:
+        for span in chunk['spans']:
+             params = {'wikidata_id':span.predicted_entity.wikidata_entity_id,
+                       'chunk_id':chunk['db_id'],
+                       'mention':span.text,
+                       'conf':span.entity_linking_model_confidence_score,
+                       'start':span.start,
+                       'end':len(span.text)+span.start-1}
+             with driver.session() as session:
+                session.run(stmt,params) 
 
 
 def link_chunks_with_text_in_database(driver,chunks_db_id,text_id):
@@ -131,11 +153,14 @@ def create_chunks_in_database(driver,chunks,text_id):
         with driver.session() as session:
            result = session.run(stmt,params) 
            node_id = result.single()['nodeId']
+           chunk['db_id'] = node_id
            chunks_db_id.append(node_id)
 
     link_chunks_with_text_in_database(driver,chunks_db_id,text_id)
 
     return chunks_db_id
+
+
 
 
 def create_entities_in_database(driver,entities):
@@ -149,8 +174,6 @@ def create_entities_in_database(driver,entities):
     
            
 
-
-
 def create_text_in_database(driver,phrase):
     stmt = "CREATE (t:Text {text: $text, createdAt: datetime()}) RETURN id(t) as nodeId"
     params = {"text": phrase}
@@ -161,6 +184,17 @@ def create_text_in_database(driver,phrase):
         return node_id
 
 
+def distribute_spans_in_chunks(spans,chunks):
+    for span in spans:
+        for chunk in chunks:
+            if span.start >= chunk['start'] and len(span.text) + span.start - 1 <= chunk['end']:
+
+                if chunk.get('spans'):
+                    chunk['spans'].append(span)
+                else:
+                    chunk['spans'] = [span]
+
+                break
 
 #def store_in_database_tx(pharse,chunk,relationships,entities,spans):
 
@@ -178,9 +212,12 @@ if __name__ == '__main__':
         phrase = input("Enter a phrase  with no newline to extract information: ")
         chunks = extract_chunks(nlp,phrase,tokenizer,model)
         relationships, entities,spans = method_3(phrase)
+        distribute_spans_in_chunks(spans,chunks)
 
         with GraphDatabase.driver(URI,auth=AUTH) as driver:
             text_id = create_text_in_database(driver,phrase)
             chunks_id = create_chunks_in_database(driver,chunks,text_id)
             create_entities_in_database(driver,entities)
+            link_entity_mentions_with_chunks(driver,chunks)
+            
 
