@@ -103,11 +103,33 @@ def extract_chunks(nlp, phrase,tokenizer,model):
     return chunks
 
 
+
 def generate_contextual_embedding_from_phrase(phrase,model,tokenizer):
     encoded_input = tokenizer(phrase,return_tensors='pt')
     outputs= model(**encoded_input)
     embedding = str(outputs.last_hidden_state.mean(dim=1).tolist()[0])
+    
     return embedding
+
+
+def create_relationships_between_entities(driver,relationships):
+    stmt = """
+
+    MATCH (e1:Entity{wikidata_id:$e1_id}),(e2:Entity{wikidata_id:$e2_id})
+
+    """
+    
+    for rel in relationships:
+        head_uri = rel['subject']['uri']
+        type_rel = rel['predicate']['surfaceform'].upper().replace(" ",'_')
+        tail_uri = rel['object']['uri']
+        rel_stmt = stmt +"MERGE (e1)-[:"+type_rel+"]->(e2)"
+        params = {'e1_id':head_uri,'e2_id':tail_uri}
+
+        with driver.session() as session:
+            session.run(rel_stmt,params)
+
+
 
 def link_entity_mentions_with_chunks(driver,chunks):
 
@@ -219,5 +241,5 @@ if __name__ == '__main__':
             chunks_id = create_chunks_in_database(driver,chunks,text_id)
             create_entities_in_database(driver,entities)
             link_entity_mentions_with_chunks(driver,chunks)
-            
+            create_relationships_between_entities(driver,relationships)
 
