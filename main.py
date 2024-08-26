@@ -4,6 +4,9 @@ from kgbuilder import KGBuilder
 from refined.data_types.base_types import Span
 import spacy
 from transformers import DistilBertTokenizer, DistilBertModel
+from wikidata.client import Client
+
+
 
 URI = "neo4j://localhost"
 AUTH = ("neo4j","prueba_1234")
@@ -220,9 +223,42 @@ def distribute_spans_in_chunks(spans,chunks):
 
 #def store_in_database_tx(pharse,chunk,relationships,entities,spans):
 
+def map_entities_with_external_representation(driver,client):
+    stmt = "MATCH (n:Entity) where n.`label` is null return n"
+
+    with driver.session() as session:
+        result = session.run(stmt)
+        for record in result:
+            wikidata_id = record["n"]["wikidata_id"]
+            try:
+                entity = client.get(wikidata_id,load=True)
+
+                
+                description = entity.description.texts['en']
+                labels = entity.attributes['labels']
+                label_es = None
+                label_ca = None
+                label = None
+                if labels.get('en',None) is not None:
+                    label = labels.get('en',None)['value']
+                if labels.get('es',None) is not None:
+                    label_es = labels.get('es',None)['value']
+                if labels.get('ca',None) is not None:
+                    label_ca = labels.get('ca',None)['value']
+                
+                stmt = "MATCH (n:Entity) where n.`wikidata_id`= $wikidata_id SET n.`label` = $label, n.description = $description, n.`label:es`= $label_es, n.`label:ca`= $label_ca"
+                params = {'label':label,'description':description,'label_es':label_es,'label_ca':label_ca,'wikidata_id':wikidata_id}
+
+                session.run(stmt,params)
+            except Exception as e:
+                print(e)
+
+            
+            
 
 if __name__ == '__main__':
     builder = KGBuilder()
+    client = Client()
     nlp = spacy.load("en_core_web_sm")
 
     
@@ -242,4 +278,5 @@ if __name__ == '__main__':
             create_entities_in_database(driver,entities)
             link_entity_mentions_with_chunks(driver,chunks)
             create_relationships_between_entities(driver,relationships)
+            map_entities_with_external_representation(driver,client)
 
