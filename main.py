@@ -1,16 +1,22 @@
 
 from neo4j import GraphDatabase
+import wikidata
 from kgbuilder import KGBuilder
 from refined.data_types.base_types import Span
 import spacy
 from transformers import DistilBertTokenizer, DistilBertModel
 from wikidata.client import Client
+import logging
+import json
+
+logging.getLogger("neo4j.notifications").setLevel(logging.ERROR)
 
 
 
 URI = "neo4j://localhost"
 AUTH = ("neo4j","prueba_1234")
 
+properties_dict = {}
 
 
 def get_entity_from_dicc(dictionary:dict,term:str):
@@ -221,7 +227,7 @@ def distribute_spans_in_chunks(spans,chunks):
 
                 break
 
-#def store_in_database_tx(pharse,chunk,relationships,entities,spans):
+
 
 def map_entities_with_external_representation(driver,client):
     stmt = "MATCH (n:Entity) where n.`label` is null return n"
@@ -249,7 +255,40 @@ def map_entities_with_external_representation(driver,client):
                 stmt = "MATCH (n:Entity) where n.`wikidata_id`= $wikidata_id SET n.`label` = $label, n.description = $description, n.`label:es`= $label_es, n.`label:ca`= $label_ca"
                 params = {'label':label,'description':description,'label_es':label_es,'label_ca':label_ca,'wikidata_id':wikidata_id}
 
-                session.run(stmt,params)
+                dict_params = {
+                    
+                }
+                for i in entity.iterlists():
+                    for j in i[1]:
+                        try:
+                            property = None
+                            if type(j) == str:
+                                property = properties_dict[i[0].id].lower().replace(' ','_')
+                                unity =  str(j) 
+                                dict_params[property] = j
+                            if type(j) == wikidata.quantity.Quantity:
+                                property = properties_dict[i[0].id].lower().replace(' ','_')
+                                unity =  "," +  str(j.unit.label) if j.unit is not None else ""
+                                dict_params[property] = str(j.amount) + unity
+                            if type(j) == wikidata.globecoordinate.GlobeCoordinate:
+                                property = properties_dict[i[0].id].lower().replace(' ','_')
+                                dict_params[property] = "point({latitude: "+str(j.latitude)+",longitude:"+str(j.longitude)+"})"
+                        except Exception as e:
+                            pass
+
+
+                stmt_part = ""
+                dict_update = {}
+                i = 0
+                for key in dict_params.keys():
+                    parameter = "p"+str(i)
+                    stmt_part += ", n.`"+key+"`=$"+parameter
+                    dict_update[parameter] = dict_params[key]
+                    i += 1
+
+                dict_update.update(params)
+                session.run(stmt+stmt_part,dict_update)
+
             except Exception as e:
                 print(e)
 
@@ -260,7 +299,9 @@ if __name__ == '__main__':
     builder = KGBuilder()
     client = Client()
     nlp = spacy.load("en_core_web_sm")
-
+    
+    with open('properties.json','r') as file:
+        properties_dict = json.load(file)
     
     tokenizer = DistilBertTokenizer.from_pretrained('distilbert-base-uncased')
     model = DistilBertModel.from_pretrained("distilbert-base-uncased")
@@ -268,15 +309,18 @@ if __name__ == '__main__':
 
     while True:
         phrase = input("Enter a phrase  with no newline to extract information: ")
+        print("1. Extracting information from the text")
         chunks = extract_chunks(nlp,phrase,tokenizer,model)
         relationships, entities,spans = method_3(phrase)
         distribute_spans_in_chunks(spans,chunks)
 
         with GraphDatabase.driver(URI,auth=AUTH) as driver:
+            print("2. Storing information in database")
             text_id = create_text_in_database(driver,phrase)
             chunks_id = create_chunks_in_database(driver,chunks,text_id)
             create_entities_in_database(driver,entities)
             link_entity_mentions_with_chunks(driver,chunks)
             create_relationships_between_entities(driver,relationships)
+            print("3. Updating entity information")
             map_entities_with_external_representation(driver,client)
 
