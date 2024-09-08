@@ -146,7 +146,7 @@ def link_entities_mentions_with_types(driver,entities,dict_ent_types):
     stmt = """
         MATCH (e:Entity {wikidata_id:$w1})
         MERGE (t:Type {wikidata_id:$w2,label:$label})
-        MERGE (e)-[:INSTANCE_OF{confidence:$con}]->(t)
+        MERGE (e)-[:INSTANCE_OF]->(t)
         
     """
     for ent in entities:
