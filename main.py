@@ -1,5 +1,7 @@
 
+import time
 from neo4j import GraphDatabase
+from tqdm import tqdm
 import wikidata
 from kgbuilder import KGBuilder
 from refined.data_types.base_types import Span
@@ -8,6 +10,7 @@ from transformers import DistilBertTokenizer, DistilBertModel
 from wikidata.client import Client
 import logging
 import json
+import os
 
 logging.getLogger("neo4j.notifications").setLevel(logging.ERROR)
 
@@ -139,6 +142,23 @@ def create_relationships_between_entities(driver,relationships):
             session.run(rel_stmt,params)
 
 
+def link_entities_mentions_with_types(driver,entities,dict_ent_types):
+    stmt = """
+        MATCH (e:Entity {wikidata_id:$w1})
+        MERGE (t:Type {wikidata_id:$w2,label:$label})
+        MERGE (e)-[:INSTANCE_OF{confidence:$con}]->(t)
+        
+    """
+    for ent in entities:
+        entity_types = dict_ent_types[ent]
+        for type_ent in entity_types:
+            if type_ent[2] > 0.8:
+                params = {"w1":ent,"w2":type_ent[0],"label":type_ent[1],"con":type_ent[2]}
+                with driver.session() as session:
+                    session.run(stmt,params)
+
+
+
 
 def link_entity_mentions_with_chunks(driver,chunks):
 
@@ -228,13 +248,25 @@ def distribute_spans_in_chunks(spans,chunks):
                 break
 
 
+def distribute_entity_types_in_entities(entities,spans):
+
+    dict_ent_types = {}
+    for ent in entities:
+        for span in spans:
+            span_id = span.predicted_entity.wikidata_entity_id
+            if span_id == ent:
+                dict_ent_types[ent] =  span.predicted_entity_types
+    
+    return dict_ent_types
 
 def map_entities_with_external_representation(driver,client):
     stmt = "MATCH (n:Entity) where n.`label` is null return n"
 
     with driver.session() as session:
         result = session.run(stmt)
-        for record in result:
+        result = list(result)
+        for index in tqdm(range(len(result))):
+            record = result[index]
             wikidata_id = record["n"]["wikidata_id"]
             try:
                 entity = client.get(wikidata_id,load=True)
@@ -287,10 +319,13 @@ def map_entities_with_external_representation(driver,client):
                     i += 1
 
                 dict_update.update(params)
-                session.run(stmt+stmt_part,dict_update)
+                try:
+                    session.run(stmt+stmt_part,dict_update)
+                except Exception as e:
+                    session.run(stmt,params)
 
             except Exception as e:
-                print(e)
+                pass
 
             
             
@@ -308,19 +343,32 @@ if __name__ == '__main__':
 
 
     while True:
+        os.system('clear')
         phrase = input("Enter a phrase  with no newline to extract information: ")
+        print("---------------------------------------")
         print("1. Extracting information from the text")
         chunks = extract_chunks(nlp,phrase,tokenizer,model)
         relationships, entities,spans = method_3(phrase)
+        dict_ent_types = distribute_entity_types_in_entities(entities,spans)
         distribute_spans_in_chunks(spans,chunks)
-
+        print("---------------------------------------")
         with GraphDatabase.driver(URI,auth=AUTH) as driver:
             print("2. Storing information in database")
+            print(" 2.1. Storing text")
             text_id = create_text_in_database(driver,phrase)
+            print(" 2.2. Storing chunks")
             chunks_id = create_chunks_in_database(driver,chunks,text_id)
+            print(" 2.3. Storing new entities detected")
             create_entities_in_database(driver,entities)
+            print(" 2.4. Mapping entities with its entities types")
+            link_entities_mentions_with_types(driver,entities,dict_ent_types)
+            print(" 2.5. Mapping entities with its chunks")
             link_entity_mentions_with_chunks(driver,chunks)
+            print(" 2.6. Storing relationships between entities")
             create_relationships_between_entities(driver,relationships)
+            print("---------------------------------------")
             print("3. Updating entity information")
             map_entities_with_external_representation(driver,client)
+            print("Process finish sucessfully!!!")
+            time.sleep(3)
 
