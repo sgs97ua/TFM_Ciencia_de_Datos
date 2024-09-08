@@ -1,0 +1,25 @@
+version: "3"
+
+services:
+  tfm:
+    image: neo4j:5.14
+    container_name: neo4j-tfm
+    restart: always
+    ports:
+      - 7473:7473
+      - 7474:7474
+      - 7687:7687
+    volumes:
+      - "./neo4j/neo4j:/var/lib/neo4j/data"
+      - "./neo4j/neo4j-plugins:/var/lib/neo4j/plugins"
+      - ./neo4j/import:/var/lib/neo4j/import
+    environment:
+      - NEO4J_AUTH=neo4j/prueba_1234
+      #- NEO4J_ACCEPT_LICENSE_AGREEMENT=yes
+      - NEO4JLABS_PLUGINS=["apoc","graph-data-science"]
+      - NEO4J_dbms_security_procedures_unrestricted=apoc.*,gds.*
+      - NEO4J_dbms_security_procedures_allowlist=apoc.*,gds.*
+      #- NEO4J_dbms_unmanaged__extension__classes=n10s.endpoint=/rdf
+      #- NEO4J_dbms_security_procedures_whitelist=apoc.*,gds.*
+      #- NEO4J_apoc_export_file_enabled=true
+      #- NEO4J_apoc_import_file_enabled=true
